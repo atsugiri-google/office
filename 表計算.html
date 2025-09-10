@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプルな表計算アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 8px 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        td input {
+            width: 100%;
+            text-align: center;
+            border: none;
+            outline: none;
+            background-color: transparent;
+            font-size: 1rem;
+        }
+        .total-row {
+            background-color: #eff6ff;
+            font-weight: 700;
+            border-top: 2px solid #3b82f6;
+        }
+        .total-row td {
+            border-top: 2px solid #3b82f6;
+        }
+        .cell-output {
+            text-align: right;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center">
+    <div class="container rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">シンプルな表計算アプリ</h1>
+        <p class="text-center text-gray-600 mb-8">
+            セルに数値を入力してください。合計行と列が自動的に計算されます。
+        </p>
+
+        <div class="overflow-x-auto">
+            <table id="spreadsheetTable" class="min-w-full rounded-md overflow-hidden">
+                <thead>
+                    <tr>
+                        <th class="py-3 px-4 rounded-tl-md"></th>
+                        <th class="py-3 px-4">A</th>
+                        <th class="py-3 px-4">B</th>
+                        <th class="py-3 px-4">C</th>
+                        <th class="py-3 px-4 rounded-tr-md">合計</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th class="py-3 px-4">1</th>
+                        <td class="py-2 px-4"><input type="number" data-row="0" data-col="0" value="10"></td>
+                        <td class="py-2 px-4"><input type="number" data-row="0" data-col="1" value="20"></td>
+                        <td class="py-2 px-4"><input type="number" data-row="0" data-col="2" value="30"></td>
+                        <td class="py-2 px-4 font-bold cell-output" id="row-total-0">60</td>
+                    </tr>
+                    <tr>
+                        <th class="py-3 px-4">2</th>
+                        <td class="py-2 px-4"><input type="number" data-row="1" data-col="0" value="40"></td>
+                        <td class="py-2 px-4"><input type="number" data-row="1" data-col="1" value="50"></td>
+                        <td class="py-2 px-4"><input type="number" data-row="1" data-col="2" value="60"></td>
+                        <td class="py-2 px-4 font-bold cell-output" id="row-total-1">150</td>
+                    </tr>
+                    <tr>
+                        <th class="py-3 px-4">3</th>
+                        <td class="py-2 px-4"><input type="number" data-row="2" data-col="0" value="70"></td>
+                        <td class="py-2 px-4"><input type="number" data-row="2" data-col="1" value="80"></td>
+                        <td class="py-2 px-4"><input type="number" data-row="2" data-col="2" value="90"></td>
+                        <td class="py-2 px-4 font-bold cell-output" id="row-total-2">240</td>
+                    </tr>
+                    <tr class="total-row">
+                        <th class="py-3 px-4 rounded-bl-md">合計</th>
+                        <td class="py-2 px-4 font-bold cell-output" id="col-total-0">120</td>
+                        <td class="py-2 px-4 font-bold cell-output" id="col-total-1">150</td>
+                        <td class="py-2 px-4 font-bold cell-output" id="col-total-2">180</td>
+                        <td class="py-2 px-4 font-bold cell-output rounded-br-md" id="grand-total">450</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const table = document.getElementById('spreadsheetTable');
+        const inputs = table.querySelectorAll('input[type="number"]');
+
+        // 関数: 合計を計算して表示
+        function calculateTotals() {
+            const numRows = 3;
+            const numCols = 3;
+            let grandTotal = 0;
+
+            // 行ごとの合計を計算
+            for (let i = 0; i < numRows; i++) {
+                let rowTotal = 0;
+                for (let j = 0; j < numCols; j++) {
+                    const input = table.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+                    rowTotal += parseFloat(input.value) || 0;
+                }
+                document.getElementById(`row-total-${i}`).textContent = rowTotal;
+                grandTotal += rowTotal;
+            }
+
+            // 列ごとの合計を計算
+            for (let j = 0; j < numCols; j++) {
+                let colTotal = 0;
+                for (let i = 0; i < numRows; i++) {
+                    const input = table.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+                    colTotal += parseFloat(input.value) || 0;
+                }
+                document.getElementById(`col-total-${j}`).textContent = colTotal;
+            }
+
+            // 総計を表示
+            document.getElementById('grand-total').textContent = grandTotal;
+        }
+
+        // イベントリスナーを各入力フィールドに設定
+        inputs.forEach(input => {
+            input.addEventListener('input', calculateTotals);
+        });
+
+        // ページ読み込み時に最初の合計を計算
+        window.onload = function() {
+            calculateTotals();
+        };
+
+    </script>
+</body>
+</html>

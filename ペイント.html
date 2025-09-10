@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ペイントアプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .controls {
+            background-color: #ffffff;
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .controls button, .controls input[type="color"] {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        
+        .controls button {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .controls button.active {
+            background-color: #2563eb;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls button:hover:not(.active) {
+            background-color: #60a5fa;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 40px;
+            height: 40px;
+            border: 2px solid #d1d5db;
+            padding: 0;
+            cursor: pointer;
+            background: none;
+        }
+        
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 6px;
+        }
+
+        canvas {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            touch-action: none; /* Prevents default touch actions like scrolling */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col items-center p-4">
+
+    <div class="container p-4 rounded-lg shadow-xl bg-white">
+        <h1 class="text-3xl font-bold text-center mb-4 text-gray-800">ペイントアプリ</h1>
+        <div class="controls mb-4 p-4 flex flex-wrap gap-2 justify-center rounded-lg shadow-md">
+            <!-- Tool buttons -->
+            <button id="draw-mode" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 transition" aria-label="自由線"><i class="fa-solid fa-pen"></i></button>
+            <button id="line-mode" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 transition" aria-label="直線"><i class="fa-solid fa-grip-lines"></i></button>
+            <button id="rect-mode" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 transition" aria-label="四角"><i class="fa-regular fa-square"></i></button>
+            <button id="circle-mode" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 transition" aria-label="丸"><i class="fa-regular fa-circle"></i></button>
+            <button id="eraser-mode" class="bg-pink-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-pink-600 transition" aria-label="消しゴム"><i class="fa-solid fa-eraser"></i></button>
+            <button id="fill-mode" class="bg-purple-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-600 transition" aria-label="塗りつぶし"><i class="fa-solid fa-fill-drip"></i></button>
+            <button id="transform-mode" class="bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-yellow-600 transition" aria-label="自由変形"><i class="fa-solid fa-arrows-up-down-left-right"></i></button>
+            <button id="clear-button" class="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition" aria-label="クリア"><i class="fa-solid fa-trash"></i></button>
+            <button id="download-button" class="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition" aria-label="ダウンロード"><i class="fa-solid fa-download"></i></button>
+            
+            <!-- Color and size controls -->
+            <div class="flex items-center space-x-2">
+                <span class="font-medium">線の太さ:</span>
+                <input type="range" id="lineWidth" min="1" max="20" value="5" class="w-24">
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="font-medium">色:</span>
+                <input type="color" id="lineColor" value="#000000">
+            </div>
+        </div>
+
+        <canvas id="canvas" class="bg-white rounded-lg shadow-lg border border-gray-300"></canvas>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const drawButton = document.getElementById('draw-mode');
+            const lineButton = document.getElementById('line-mode');
+            const rectButton = document.getElementById('rect-mode');
+            const circleButton = document.getElementById('circle-mode');
+            const eraserButton = document.getElementById('eraser-mode');
+            const fillButton = document.getElementById('fill-mode');
+            const transformButton = document.getElementById('transform-mode');
+            const clearButton = document.getElementById('clear-button');
+            const downloadButton = document.getElementById('download-button');
+            const lineWidthInput = document.getElementById('lineWidth');
+            const lineColorInput = document.getElementById('lineColor');
+
+            let currentMode = 'draw';
+            let isDrawing = false;
+            let isFilling = false;
+            let isTransforming = false;
+            let startPoint = { x: 0, y: 0 };
+            let shapes = [];
+            let selectedShapeIndex = -1;
+            let lastX = 0;
+            let lastY = 0;
+
+            // Set canvas size
+            const resizeCanvas = () => {
+                const parent = canvas.parentElement;
+                canvas.width = parent.clientWidth - 32; // - padding
+                canvas.height = Math.min(canvas.width * 0.75, window.innerHeight * 0.6);
+                drawShapes();
+            };
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // Event listeners for tool buttons
+            drawButton.addEventListener('click', () => setMode('draw'));
+            lineButton.addEventListener('click', () => setMode('line'));
+            rectButton.addEventListener('click', () => setMode('rect'));
+            circleButton.addEventListener('click', () => setMode('circle'));
+            eraserButton.addEventListener('click', () => setMode('eraser'));
+            transformButton.addEventListener('click', () => setMode('transform'));
+            fillButton.addEventListener('click', () => {
+                isFilling = !isFilling;
+                fillButton.classList.toggle('active', isFilling);
+            });
+            clearButton.addEventListener('click', () => {
+                shapes = [];
+                drawShapes();
+            });
+            
+            // Modified download button logic using canvas.toBlob()
+            downloadButton.addEventListener('click', () => {
+                // Create a temporary canvas to ensure a white background
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+
+                // Draw a white background on the temporary canvas
+                tempCtx.fillStyle = '#FFFFFF';
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                // Draw the main canvas content onto the temporary canvas
+                tempCtx.drawImage(canvas, 0, 0);
+
+                // Convert the temporary canvas to a JPEG blob
+                tempCanvas.toBlob((blob) => {
+                    if (blob) {
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.download = 'my-drawing.jpg';
+                        link.href = url;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url); // Clean up the URL
+                    } else {
+                        console.error('Failed to create canvas blob.');
+                    }
+                }, 'image/jpeg', 0.95); // 'image/jpeg' and a quality of 0.95
+            });
+
+            const setMode = (mode) => {
+                currentMode = mode;
+                document.querySelectorAll('.controls button').forEach(btn => {
+                    if (btn.id !== 'fill-mode') {
+                        btn.classList.remove('active');
+                    }
+                });
+                document.getElementById(`${mode}-mode`).classList.add('active');
+            };
+
+            // Set initial mode
+            setMode(currentMode);
+            fillButton.classList.toggle('active', isFilling);
+
+            // Mouse and touch event handlers
+            canvas.addEventListener('mousedown', startAction);
+            canvas.addEventListener('mousemove', moveAction);
+            canvas.addEventListener('mouseup', endAction);
+            canvas.addEventListener('mouseout', endAction);
+
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startAction(e.touches[0]);
+            }, { passive: false });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                moveAction(e.touches[0]);
+            }, { passive: false });
+            canvas.addEventListener('touchend', endAction);
+
+            function startAction(e) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                startPoint = { x, y };
+                lastX = x;
+                lastY = y;
+                isDrawing = true;
+
+                if (currentMode === 'transform') {
+                    const hitIndex = getSelectedShape(x, y);
+                    if (hitIndex !== -1) {
+                        selectedShapeIndex = hitIndex;
+                        isTransforming = true;
+                    } else {
+                        selectedShapeIndex = -1;
+                    }
+                } else if (currentMode === 'rect') {
+                    // Start a new rect shape with initial position
+                    shapes.push({
+                        type: 'rect',
+                        rectX: x,
+                        rectY: y,
+                        width: 0,
+                        height: 0,
+                        lineColor: lineColorInput.value,
+                        isFilled: isFilling,
+                    });
+                } else if (currentMode === 'circle') {
+                    // Start a new circle shape with initial position
+                    shapes.push({
+                        type: 'circle',
+                        centerX: x,
+                        centerY: y,
+                        radius: 0,
+                        lineColor: lineColorInput.value,
+                        isFilled: isFilling,
+                    });
+                } else if (currentMode === 'line') {
+                    // Start a new line shape with start and end points
+                    shapes.push({
+                        type: 'line',
+                        points: [{ x, y }, { x, y }], // Initially, start and end points are the same
+                        lineWidth: lineWidthInput.value,
+                        lineColor: lineColorInput.value,
+                    });
+                } else if (currentMode === 'eraser') {
+                    // Start a new eraser shape (which is a special kind of draw tool)
+                    shapes.push({
+                        type: 'eraser',
+                        points: [{ x, y }],
+                        lineWidth: lineWidthInput.value,
+                    });
+                } else {
+                    // Start a new draw shape
+                    shapes.push({
+                        type: currentMode,
+                        points: [{ x, y }],
+                        lineWidth: lineWidthInput.value,
+                        lineColor: lineColorInput.value,
+                    });
+                }
+                drawShapes();
+            }
+
+            function moveAction(e) {
+                if (!isDrawing) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (currentMode === 'transform' && isTransforming && selectedShapeIndex !== -1) {
+                    const dx = x - lastX;
+                    const dy = y - lastY;
+                    const shape = shapes[selectedShapeIndex];
+
+                    if (shape) { // Add a check for shape existence
+                        if (shape.type === 'rect') {
+                             shape.rectX += dx;
+                             shape.rectY += dy;
+                        } else if (shape.type === 'circle') {
+                             shape.centerX += dx;
+                             shape.centerY += dy;
+                        } else if (shape.points) { // Freehand and lines use the points array
+                             shape.points.forEach(p => {
+                                p.x += dx;
+                                p.y += dy;
+                            });
+                        }
+                    }
+                    lastX = x;
+                    lastY = y;
+                } else {
+                    const currentShape = shapes[shapes.length - 1];
+                    if (!currentShape) {
+                        return;
+                    }
+                    
+                    switch (currentMode) {
+                        case 'draw':
+                        case 'eraser':
+                            currentShape.points.push({ x, y });
+                            break;
+                        case 'line':
+                            currentShape.points[1] = { x, y };
+                            break;
+                        case 'rect':
+                            currentShape.width = x - startPoint.x;
+                            currentShape.height = y - startPoint.y;
+                            break;
+                        case 'circle':
+                            currentShape.radius = Math.sqrt(Math.pow(x - startPoint.x, 2) + Math.pow(y - startPoint.y, 2));
+                            break;
+                    }
+                }
+
+                drawShapes();
+                
+                // Draw temporary preview
+                if (isDrawing && currentMode !== 'transform') {
+                    ctx.save();
+                    const currentColor = currentMode === 'eraser' ? '#fff' : lineColorInput.value;
+                    const rgbaColor = hexToRgba(currentColor, 0.5);
+                    ctx.strokeStyle = rgbaColor;
+                    ctx.fillStyle = rgbaColor;
+                    ctx.lineWidth = lineWidthInput.value;
+
+                    ctx.beginPath();
+                    if (currentMode === 'draw' || currentMode === 'eraser') {
+                        const currentShape = shapes[shapes.length - 1];
+                        if (currentShape && currentShape.points && currentShape.points.length > 1) {
+                            ctx.moveTo(startPoint.x, startPoint.y);
+                            for (let i = 1; i < currentShape.points.length; i++) {
+                                ctx.lineTo(currentShape.points[i].x, currentShape.points[i].y);
+                            }
+                            ctx.stroke();
+                        }
+                    } else if (currentMode === 'line') {
+                        ctx.moveTo(startPoint.x, startPoint.y);
+                        ctx.lineTo(x, y);
+                        ctx.stroke();
+                    } else if (currentMode === 'rect') {
+                        const width = x - startPoint.x;
+                        const height = y - startPoint.y;
+                        ctx.rect(startPoint.x, startPoint.y, width, height);
+                        if (isFilling) ctx.fill();
+                        ctx.stroke();
+                    } else if (currentMode === 'circle') {
+                        const radius = Math.sqrt(Math.pow(x - startPoint.x, 2) + Math.pow(y - startPoint.y, 2));
+                        ctx.arc(startPoint.x, startPoint.y, radius, 0, 2 * Math.PI);
+                        if (isFilling) ctx.fill();
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            }
+
+            function endAction() {
+                isDrawing = false;
+                isTransforming = false;
+
+                if (currentMode === 'transform') {
+                    // Do nothing, just stop transforming
+                } else if (shapes.length > 0) {
+                    const currentShape = shapes[shapes.length - 1];
+                    if (currentShape.type === 'draw' || currentShape.type === 'line' || currentShape.type === 'eraser') {
+                        if (currentShape.points.length < 2) {
+                            shapes.pop(); // Remove single point shapes
+                        }
+                    } else if (currentShape.type === 'rect') {
+                        if (currentShape.width === 0 || currentShape.height === 0) {
+                             shapes.pop();
+                        }
+                    } else if (currentShape.type === 'circle') {
+                        if (currentShape.radius === 0) {
+                             shapes.pop();
+                        }
+                    }
+                }
+                drawShapes();
+            }
+            
+            // Helper function to get the selected shape
+            function getSelectedShape(x, y) {
+                for (let i = shapes.length - 1; i >= 0; i--) {
+                    const shape = shapes[i];
+                    if (shape.type === 'draw' && shape.points) {
+                        for (let j = 0; j < shape.points.length - 1; j++) {
+                            const p1 = shape.points[j];
+                            const p2 = shape.points[j + 1];
+                            const dist = distToSegment(x, y, p1.x, p1.y, p2.x, p2.y);
+                            if (dist < 10) { 
+                                return i;
+                            }
+                        }
+                    } else if (shape.type === 'line' && shape.points) {
+                        const p1 = shape.points[0];
+                        const p2 = shape.points[1];
+                        if (distToSegment(x, y, p1.x, p1.y, p2.x, p2.y) < 10) {
+                            return i;
+                        }
+                    } else if (shape.type === 'rect') {
+                        const p = { x: shape.rectX, y: shape.rectY };
+                        if (x >= p.x && x <= p.x + shape.width && y >= p.y && y <= p.y + shape.height) {
+                            return i;
+                        }
+                    } else if (shape.type === 'circle') {
+                        const p = { x: shape.centerX, y: shape.centerY };
+                        const dist = Math.sqrt(Math.pow(x - p.x, 2) + Math.pow(y - p.y, 2));
+                        if (dist <= shape.radius) {
+                            return i;
+                        }
+                    }
+                }
+                return -1;
+            }
+
+            // Function to calculate distance from a point to a line segment
+            function distToSegment(px, py, x1, y1, x2, y2) {
+                const l2 = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
+                if (l2 === 0) return Math.sqrt(Math.pow(px - x1, 2) + Math.pow(py - y1, 2));
+                let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                const projectionX = x1 + t * (x2 - x1);
+                const projectionY = y1 + t * (y2 - y1);
+                return Math.sqrt(Math.pow(px - projectionX, 2) + Math.pow(py - projectionY, 2));
+            }
+
+            // Helper function to convert hex color to rgba
+            function hexToRgba(hex, alpha) {
+                let r = 0, g = 0, b = 0;
+                if (hex.length === 4) { // #RGB
+                    r = parseInt(hex[1] + hex[1], 16);
+                    g = parseInt(hex[2] + hex[2], 16);
+                    b = parseInt(hex[3] + hex[3], 16);
+                } else if (hex.length === 7) { // #RRGGBB
+                    r = parseInt(hex.substring(1, 3), 16);
+                    g = parseInt(hex.substring(3, 5), 16);
+                    b = parseInt(hex.substring(5, 7), 16);
+                }
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            }
+
+            // Draw all shapes on the canvas
+            function drawShapes() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                shapes.forEach((shape, index) => {
+                    // Use a specific color for the eraser, otherwise use the shape's color
+                    ctx.strokeStyle = shape.type === 'eraser' ? '#fff' : shape.lineColor;
+                    ctx.lineWidth = shape.lineWidth;
+                    ctx.fillStyle = shape.type === 'eraser' ? '#fff' : shape.lineColor;
+
+                    ctx.beginPath();
+                    if (shape.type === 'draw' || shape.type === 'eraser') {
+                        if (shape.points && shape.points.length > 1) {
+                            ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                            for (let i = 1; i < shape.points.length; i++) {
+                                ctx.lineTo(shape.points[i].x, shape.points[i].y);
+                            }
+                        }
+                    } else if (shape.type === 'line') {
+                        if (shape.points && shape.points.length >= 2) {
+                            ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                            ctx.lineTo(shape.points[1].x, shape.points[1].y);
+                        }
+                    } else if (shape.type === 'rect') {
+                        ctx.rect(shape.rectX, shape.rectY, shape.width, shape.height);
+                    } else if (shape.type === 'circle') {
+                        ctx.arc(shape.centerX, shape.centerY, shape.radius, 0, 2 * Math.PI);
+                    }
+                    
+                    if (shape.isFilled && (shape.type === 'rect' || shape.type === 'circle')) {
+                        ctx.fill();
+                    }
+                    ctx.stroke();
+
+                    // Highlight selected shape in transform mode
+                    if (currentMode === 'transform' && index === selectedShapeIndex) {
+                        ctx.strokeStyle = '#4a4a7a';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]);
+                        if (shape.type === 'rect') {
+                            ctx.strokeRect(shape.rectX, shape.rectY, shape.width, shape.height);
+                        } else if (shape.type === 'circle') {
+                            ctx.beginPath();
+                            ctx.arc(shape.centerX, shape.centerY, shape.radius, 0, 2 * Math.PI);
+                            ctx.stroke();
+                        } else if ((shape.type === 'line' || shape.type === 'draw') && shape.points) {
+                            ctx.beginPath();
+                            ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                            for (let i = 1; i < shape.points.length; i++) {
+                                ctx.lineTo(shape.points[i].x, shape.points[i].y);
+                            }
+                            ctx.stroke();
+                        }
+                        ctx.setLineDash([]);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
